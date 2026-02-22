@@ -5,12 +5,6 @@ BUILD_RPM=1
 . `dirname $0`/../functions.sh
 . `dirname $0`/../environment.sh
 
-if [ "${OS_ID}" = "fedora" ]; then
-	${ECHO} "No need to build - installing 'libdispatch-devel' from Fedora repository..."
-	sudo dnf -y install libdispatch-devel || exit 1
-	exit 0
-fi
-
 SPEC_FILE=${PROJECT_DIR}/Packaging/RedHat/SPECS/libdispatch.spec
 DISPATCH_VERSION=`rpm_version ${SPEC_FILE}`
 
@@ -20,10 +14,19 @@ print_H2 "===== Install libdispatch build dependencies..."
 DEPS=`rpmspec -q --buildrequires ${SPEC_FILE} | awk -c '{print $1}'`
 sudo yum -y install ${DEPS}
 
-print_H2 "===== Downloading libdispatch sources..."
+print_H2 "===== Preparing local libdispatch sources..."
 VER=`rpmspec -q --qf "%{version}:" ${SPEC_FILE} | awk -F: '{print $1}'`
-curl -L https://github.com/apple/swift-corelibs-libdispatch/archive/swift-${VER}-RELEASE.tar.gz -o ${RPM_SOURCES_DIR}/libdispatch-${VER}.tar.gz
-spectool -g -R ${SPEC_FILE}
+LOCAL_SRC_DIR=${PROJECT_DIR}/Libraries/libdispatch
+PKG_NAME=swift-corelibs-libdispatch-swift-${VER}-RELEASE
+if [ ! -f ${LOCAL_SRC_DIR}/CMakeLists.txt ]; then
+	print_ERR "Missing local libdispatch sources in ${LOCAL_SRC_DIR}"
+	exit 1
+fi
+TMP_DIR=`mktemp -d`
+mkdir -p ${TMP_DIR}/${PKG_NAME}
+cp -a ${LOCAL_SRC_DIR}/. ${TMP_DIR}/${PKG_NAME}/
+tar zcf ${RPM_SOURCES_DIR}/libdispatch-${VER}.tar.gz -C ${TMP_DIR} ${PKG_NAME}
+rm -rf ${TMP_DIR}
 
 print_H2 "===== Building libdispatch package..."
 rpmbuild -bb ${SPEC_FILE}

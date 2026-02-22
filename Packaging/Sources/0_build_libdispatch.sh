@@ -10,28 +10,27 @@ if [ "${OS_ID}" = "debian" ] || [ "${OS_ID}" = "ubuntu" ]; then
 	${ECHO} "Debian-based Linux distribution: calling 'apt-get install'."
 	sudo apt-get install -q -y ${BUILD_TOOLS} ${RUNTIME_DEPS} || exit 1
 else
-	if [ "${OS_ID}" = "fedora" ] || [ "$OS_ID" = "ultramarine" ]; then
-		${ECHO} "No need to build - installing 'libdispatch-devel' from Fedora repository..."
-		sudo dnf -y install libdispatch-devel || exit 1
-		exit 0
-	fi
 	${ECHO} "RedHat-based Linux distribution: calling 'yum -y install'."
-	SPEC_FILE=${PROJECT_DIR}/Libraries/libdispatch/libdispatch.spec
+	SPEC_FILE=${PROJECT_DIR}/Packaging/RedHat/SPECS/libdispatch.spec
 	DEPS=`rpmspec -q --buildrequires ${SPEC_FILE} | awk -c '{print $1}'`
 	sudo yum -y install ${DEPS} || exit 1
 fi
 
 #----------------------------------------
-# Download
+# Prepare sources
 #----------------------------------------
 GIT_PKG_NAME=swift-corelibs-libdispatch-swift-${libdispatch_version}-RELEASE
+LOCAL_SRC_DIR=${PROJECT_DIR}/Libraries/libdispatch
 
-if [ ! -d ${BUILD_ROOT}/${GIT_PKG_NAME} ]; then
-	curl -L https://github.com/apple/swift-corelibs-libdispatch/archive/swift-${libdispatch_version}-RELEASE.tar.gz -o ${BUILD_ROOT}/${GIT_PKG_NAME}.tar.gz
-	cd ${BUILD_ROOT}
-	tar zxf ${GIT_PKG_NAME}.tar.gz
-	cd ..
+if [ ! -f ${LOCAL_SRC_DIR}/CMakeLists.txt ]; then
+	${ECHO} "Missing local libdispatch sources in ${LOCAL_SRC_DIR}"
+	${ECHO} "Please vendor swift-corelibs-libdispatch there first."
+	exit 1
 fi
+
+rm -rf ${BUILD_ROOT}/${GIT_PKG_NAME}
+mkdir -p ${BUILD_ROOT}/${GIT_PKG_NAME}
+cp -a ${LOCAL_SRC_DIR}/. ${BUILD_ROOT}/${GIT_PKG_NAME}/
 
 #----------------------------------------
 # Build
